@@ -4,6 +4,7 @@ package backend;
 
 import AI.Bot;
 import AI.Bot3;
+import frontend.GameFrame;
 import models.Field;
 import utils.Coord;
 
@@ -13,7 +14,9 @@ import javax.swing.border.LineBorder;
 import java.awt.*;
 
 public class GameController {
-    private Container contentPane;
+    private static final char[][] EMPTY_BOARD = {{'.', '.', '.'}, {'.', '.', '.'}, {'.', '.', '.'}};
+
+    private JFrame gameFrame;
     private int n;
 
     private int unclickedFieldNumber;
@@ -21,38 +24,72 @@ public class GameController {
 
     private Field[][] fields;
 
-    private char[][] board = {{'.', '.', '.'}, {'.', '.', '.'}, {'.', '.', '.'}};
+    private char[][] board;
+
+    private boolean gameOver;
+
+    private boolean gameInitialized;
 
     private Bot opponent;
 
-    public GameController(Container contentPane, int n) {
-        this.contentPane = contentPane;
+    public GameController(int n) {
+        this.gameFrame = new GameFrame();
         this.n = n;
+        gameInitialized = false;
+        board = new char[n][n];
+    }
+
+    public void initGame() {
+        Container contentPane = gameFrame.getContentPane();
+
+        contentPane.removeAll();
+        contentPane.revalidate();
+        contentPane.repaint();
+
         unclickedFieldNumber = n * n;
         playerSign = 'x';
         fields = new Field[n][n];
-
+        gameOver = false;
         opponent = new Bot3('o');
-    }
+        resetBoard(board);
 
-    public void initFields() {
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
                 JButton button = new JButton();
                 button.setBorder(new BevelBorder(BevelBorder.RAISED));
-                contentPane.add(button);
+                gameFrame.getContentPane().add(button);
                 fields[i][j] = new Field(button, i, j);
                 button.addMouseListener(new ClickListener(this, fields[i][j]));
             }
         }
+
+        gameInitialized = true;
     }
 
-    public void moveMade() {
-        unclickedFieldNumber--;
+    private void resetBoard(char[][] board) {
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                board[i][j] = EMPTY_BOARD[i][j];
+            }
+        }
+    }
 
+    public void startGame() {
+        if (!gameInitialized) {
+            throw new GameNotInitializedException();
+        }
+        gameFrame.setVisible(true);
+    }
+
+    public boolean checkIfLastMoveWasLast() {
+        unclickedFieldNumber--;
+        return checkForGameOver();
+    }
+
+    private boolean checkForGameOver() {
         char winner = 'N';
         Coord[] winnerCoords = new Coord[3];
-        
+
         for (int i = 0; i < n; i++) {
             // checking rows
             if (board[i][0] != '.' && board[i][0] == board[i][1] && board[i][1] == board[i][2]) {
@@ -88,19 +125,46 @@ public class GameController {
             }
         }
 
+        return processOutcome(winner, winnerCoords);
+    }
+
+    private boolean processOutcome(char winner, Coord[] winnerCoords) {
+        String outputMessage = "";
+
         // if we have a clear winner
         if (winner != 'N') {
+            // current game is over
+            gameOver = true;
+
             // make it visible on the ui
             for (int i = 0; i < 3; i++) {
                 Coord winnerCoord = winnerCoords[i];
                 fields[winnerCoord.getX()][winnerCoord.getY()].getButton().setBorder(new LineBorder(Color.RED, 5));
             }
-            JOptionPane.showInputDialog(Character.toUpperCase(winner) + " won!");
+            outputMessage = Character.toUpperCase(winner) + " won!";
         } else {
             if (unclickedFieldNumber == 0) {
-                JOptionPane.showInputDialog("Draw!");
+                // current game is over
+                gameOver = true;
+                outputMessage = "Draw!";
             }
         }
+
+        // gameOver flag might get changed in next code fragment so we return the current value safely
+        boolean returnableGameOverFlag = gameOver;
+
+        if (gameOver) {
+            int input = JOptionPane.showConfirmDialog(null,
+                    outputMessage + "\nOne more?",
+                    "Game ended",
+                    JOptionPane.YES_NO_OPTION);
+
+            if (input == 0) { // if answer was yes
+                System.out.println("input was 0");
+                initGame();
+            }
+        }
+        return returnableGameOverFlag;
     }
 
     public char getPlayerSign() {
@@ -125,5 +189,9 @@ public class GameController {
 
     public Field[][] getFields() {
         return fields;
+    }
+
+    public boolean isGameOver() {
+        return gameOver;
     }
 }

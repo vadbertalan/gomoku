@@ -36,10 +36,13 @@ public class ClickListener extends MouseAdapter {
 
     @Override
     public void mousePressed(MouseEvent e) {
+        // creating a local copy of the gameOver flag
+        boolean gameOver = gameController.isGameOver();
+        if (gameOver) return;
         board[field.getX()][field.getY()] = playerSign;
 
         field.getButton().setIcon(new ImageIcon(ImageServer.getImage(playerSign)));
-        gameController.moveMade();
+        if (gameController.checkIfLastMoveWasLast()) return;
         field.getButton().removeMouseListener(this);
 
         ConsolePrinter.printBoardConsole(board);
@@ -53,7 +56,7 @@ public class ClickListener extends MouseAdapter {
 
             JButton clickedButtonByOp = gameController.getFields()[bestMove.getX()][bestMove.getY()].getButton();
             clickedButtonByOp.setIcon(new ImageIcon(ImageServer.getImage(opponentSign)));
-            gameController.moveMade();
+            if (gameController.checkIfLastMoveWasLast()) return;
             clickedButtonByOp.removeMouseListener(clickedButtonByOp.getMouseListeners()[1]);
 
             ConsolePrinter.printBoardConsole(board);
