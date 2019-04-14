@@ -22,14 +22,7 @@ public class ImageServer {
         }
     }
 
-    static private char move = 'x';
-    static public BufferedImage getImage() {
-        if (move == 'x') {
-            move = 'o';
-            return X_IMAGE;
-        } else {
-            move = 'x';
-            return O_IMAGE;
-        }
+    static public BufferedImage getImage(char move) {
+        return (move == 'x') ? X_IMAGE : O_IMAGE;
     }
 }
