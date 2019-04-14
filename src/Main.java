@@ -9,7 +9,7 @@ public class Main {
     public static void main(String[] args) {
 
         GameController gameController = new GameController(3);
-        gameController.initGame();
+        gameController.initGame('x');
         gameController.startGame();
 
         //        Bot bot = new Bot3('o');

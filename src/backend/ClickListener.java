@@ -28,7 +28,7 @@ public class ClickListener extends MouseAdapter {
         this.field = field;
 
         playerSign = gameController.getPlayerSign();
-        opponentSign = (playerSign == 'x') ? 'o' : 'x';
+        opponentSign = gameController.getOtherSign(playerSign);
 
         bot = gameController.getOpponent();
         board = gameController.getBoard();
@@ -48,20 +48,6 @@ public class ClickListener extends MouseAdapter {
         ConsolePrinter.printBoardConsole(board);
         ConsolePrinter.drawLine();
 
-        Coord bestMove = bot.findBestMove(board);
-
-        // if move was possible to make (i.e. the bestMove's default -100, -100 values were changed)
-        if (bestMove.getX() != -100) {
-            board[bestMove.getX()][bestMove.getY()] = opponentSign;
-
-            JButton clickedButtonByOp = gameController.getFields()[bestMove.getX()][bestMove.getY()].getButton();
-            clickedButtonByOp.setIcon(new ImageIcon(ImageServer.getImage(opponentSign)));
-            if (gameController.checkIfLastMoveWasLast()) return;
-            clickedButtonByOp.removeMouseListener(clickedButtonByOp.getMouseListeners()[1]);
-
-            ConsolePrinter.printBoardConsole(board);
-            ConsolePrinter.drawLine();
-        }
-
+        gameController.makeOpponentMove();
     }
 }

@@ -6,7 +6,9 @@ import AI.Bot;
 import AI.Bot3;
 import frontend.GameFrame;
 import models.Field;
+import utils.ConsolePrinter;
 import utils.Coord;
+import utils.ImageServer;
 
 import javax.swing.*;
 import javax.swing.border.BevelBorder;
@@ -21,6 +23,8 @@ public class GameController {
 
     private int unclickedFieldNumber;
     private char playerSign;
+    private char opponentSign;
+    private boolean playerGoesFirst;
 
     private Field[][] fields;
 
@@ -39,7 +43,7 @@ public class GameController {
         board = new char[n][n];
     }
 
-    public void initGame() {
+    public void initGame(char playerSign) {
         Container contentPane = gameFrame.getContentPane();
 
         contentPane.removeAll();
@@ -47,10 +51,12 @@ public class GameController {
         contentPane.repaint();
 
         unclickedFieldNumber = n * n;
-        playerSign = 'x';
+        this.playerSign = playerSign;
+        opponentSign = getOtherSign(playerSign);
+        playerGoesFirst = playerSign == 'x';
         fields = new Field[n][n];
         gameOver = false;
-        opponent = new Bot3('o');
+        opponent = new Bot3(opponentSign);
         resetBoard(board);
 
         for (int i = 0; i < n; i++) {
@@ -79,6 +85,26 @@ public class GameController {
             throw new GameNotInitializedException();
         }
         gameFrame.setVisible(true);
+        if (!playerGoesFirst) {
+            makeOpponentMove();
+        }
+    }
+
+    public void makeOpponentMove() {
+        Coord bestMove = opponent.findBestMove(board);
+
+        // if move was possible to make (i.e. the bestMove's default -100, -100 values were changed)
+        if (bestMove.getX() != -100) {
+            board[bestMove.getX()][bestMove.getY()] = opponentSign;
+
+            JButton clickedButtonByOp = fields[bestMove.getX()][bestMove.getY()].getButton();
+            clickedButtonByOp.setIcon(new ImageIcon(ImageServer.getImage(opponentSign)));
+            if (checkIfLastMoveWasLast()) return;
+            clickedButtonByOp.removeMouseListener(clickedButtonByOp.getMouseListeners()[1]);
+
+            ConsolePrinter.printBoardConsole(board);
+            ConsolePrinter.drawLine();
+        }
     }
 
     public boolean checkIfLastMoveWasLast() {
@@ -161,10 +187,15 @@ public class GameController {
 
             if (input == 0) { // if answer was yes
                 System.out.println("input was 0");
-                initGame();
+                initGame(getOtherSign(playerSign));
+                startGame();
             }
         }
         return returnableGameOverFlag;
+    }
+
+    public char getOtherSign(char sign) {
+        return (sign == 'x') ? 'o' : 'x';
     }
 
     public char getPlayerSign() {
