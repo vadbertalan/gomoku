@@ -24,7 +24,7 @@ public class Bot3 implements Bot {
                 if (board[i][j] == '.') {
                     board[i][j] = ownSign;
                     // setting the opponent the minimizer
-                    int score = minmax(board, false, opponentSign);
+                    int score = minmax(board, false, opponentSign, 1);
                     if (bestScore < score) {
                         bestScore = score;
                         bestMove.setX(i);
@@ -70,18 +70,15 @@ public class Bot3 implements Bot {
                 }
             }
         }
-        if (draw) {
-            return 0;
-        }
-
-        return GAME_NOT_OVER;
+        return (draw) ? 0 : GAME_NOT_OVER;
     }
 
-    private int minmax(char[][] board, boolean isMax, char sign) {
+    private int minmax(char[][] board, boolean isMax, char sign, int depth) {
         // if we hit a leaf in game tree, we return the board's value
         int boardValue = evaluateBoard(board);
         if (boardValue != GAME_NOT_OVER) {
-            return boardValue;
+            int depthCost = (isMax) ? depth : -depth;
+            return boardValue + depthCost;
         }
 
         int gameValue;
@@ -94,7 +91,7 @@ public class Bot3 implements Bot {
                     if (board[i][j] == '.') {
                         board[i][j] = sign;
 
-                        int currentGameValue = minmax(board, false, (sign == 'x') ? 'o' : 'x');
+                        int currentGameValue = minmax(board, false, (sign == 'x') ? 'o' : 'x', depth + 1);
                         if (currentGameValue > gameValue) {
                             gameValue = currentGameValue;
                         }
@@ -111,7 +108,7 @@ public class Bot3 implements Bot {
                     if (board[i][j] == '.') {
                         board[i][j] = sign;
 
-                        int currentGameValue = minmax(board, true, (sign == 'x') ? 'o' : 'x');
+                        int currentGameValue = minmax(board, true, (sign == 'x') ? 'o' : 'x', depth + 1);
                         if (currentGameValue < gameValue) {
                             gameValue = currentGameValue;
                         }

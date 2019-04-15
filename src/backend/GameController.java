@@ -4,6 +4,7 @@ package backend;
 
 import AI.Bot;
 import AI.Bot3;
+import AI.Bot4;
 import frontend.GameFrame;
 import models.Field;
 import utils.ConsolePrinter;
@@ -14,9 +15,12 @@ import javax.swing.*;
 import javax.swing.border.BevelBorder;
 import javax.swing.border.LineBorder;
 import java.awt.*;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 public class GameController {
-    private static final char[][] EMPTY_BOARD = {{'.', '.', '.'}, {'.', '.', '.'}, {'.', '.', '.'}};
+    private static final char[][] EMPTY_BOARD3 = {{'.', '.', '.'}, {'.', '.', '.'}, {'.', '.', '.'}};
+    private static final char[][] EMPTY_BOARD4 = {{'.', '.', '.', '.'}, {'.', '.', '.', '.'}, {'.', '.', '.', '.'}, {'.', '.', '.', '.'}};
 
     private JFrame gameFrame;
     private int n;
@@ -37,7 +41,7 @@ public class GameController {
     private Bot opponent;
 
     public GameController(int n) {
-        this.gameFrame = new GameFrame();
+        this.gameFrame = new GameFrame(n);
         this.n = n;
         gameInitialized = false;
         board = new char[n][n];
@@ -56,8 +60,14 @@ public class GameController {
         playerGoesFirst = playerSign == 'x';
         fields = new Field[n][n];
         gameOver = false;
-        opponent = new Bot3(opponentSign);
         resetBoard(board);
+
+        switch (n) {
+            case 3: opponent = new Bot3(opponentSign); break;
+            case 4: opponent = new Bot4(opponentSign); break;
+//            case 5: opponent = new Bot4(opponentSign); break;
+            default: throw new IllegalArgumentException();
+        }
 
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
@@ -75,7 +85,12 @@ public class GameController {
     private void resetBoard(char[][] board) {
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
-                board[i][j] = EMPTY_BOARD[i][j];
+                try {
+                    java.lang.reflect.Field emptyBoardField = GameController.class.getDeclaredField("EMPTY_BOARD" + n);
+                    board[i][j] = ((char[][]) emptyBoardField.get(this))[i][j];
+                } catch (NoSuchFieldException | IllegalAccessException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
@@ -109,18 +124,27 @@ public class GameController {
 
     public boolean checkIfLastMoveWasLast() {
         unclickedFieldNumber--;
-        return checkForGameOver();
+
+        boolean ret = false; // ret will be modified anyway, or it won't, exception will stop the program
+        try {
+            Method checkerMethod = null;
+            checkerMethod = GameController.class.getDeclaredMethod("checkForGameOver" + n);
+            ret = (boolean) checkerMethod.invoke(this);
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+        }
+        return ret;
     }
 
-    private boolean checkForGameOver() {
+    private boolean checkForGameOver3() {
         char winner = 'N';
-        Coord[] winnerCoords = new Coord[3];
+        Coord[] winnerCoords = new Coord[n];
 
         for (int i = 0; i < n; i++) {
             // checking rows
             if (board[i][0] != '.' && board[i][0] == board[i][1] && board[i][1] == board[i][2]) {
                 winner = board[i][0];
-                for (int j = 0; j < 3; j++) {
+                for (int j = 0; j < n; j++) {
                     winnerCoords[j] = new Coord(i, j);
                 }
                 break;
@@ -128,7 +152,7 @@ public class GameController {
             // checking columns
             if (board[0][i] != '.' && board[0][i] == board[1][i] && board[1][i] == board[2][i]) {
                 winner = board[0][i];
-                for (int j = 0; j < 3; j++) {
+                for (int j = 0; j < n; j++) {
                     winnerCoords[j] = new Coord(j, i);
                 }
                 break;
@@ -138,14 +162,57 @@ public class GameController {
         // checking main diagonal
         if (board[0][0] != '.' && board[0][0] == board[1][1] && board[1][1] == board[2][2]) {
             winner = board[0][0];
-            for (int j = 0; j < 3; j++) {
+            for (int j = 0; j < n; j++) {
                 winnerCoords[j] = new Coord(j, j);
             }
         } else {
             // checking secondary diagonal
             if (board[0][2] != '.' && board[0][2] == board[1][1] && board[1][1] == board[2][0]) {
                 winner = board[0][2];
-                for (int j = 0; j < 3; j++) {
+                for (int j = 0; j < n; j++) {
+                    winnerCoords[j] = new Coord(j, n - j - 1);
+                }
+            }
+        }
+
+        return processOutcome(winner, winnerCoords);
+    }
+
+    private boolean checkForGameOver4() {
+        char winner = 'N';
+        Coord[] winnerCoords = new Coord[n];
+
+        for (int i = 0; i < n; i++) {
+            // checking rows
+            if (board[i][0] != '.' && board[i][0] == board[i][1] && board[i][1] == board[i][2] && board[i][2] == board[i][3]) {
+                winner = board[i][0];
+                for (int j = 0; j < n; j++) {
+                    winnerCoords[j] = new Coord(i, j);
+                }
+                break;
+            }
+
+            // checking columns
+            if (board[0][i] != '.' && board[0][i] == board[1][i] && board[1][i] == board[2][i] && board[2][i] == board[3][i]) {
+                winner = board[0][i];
+                for (int j = 0; j < n; j++) {
+                    winnerCoords[j] = new Coord(j, i);
+                }
+                break;
+            }
+        }
+
+        // checking main diagonal
+        if (board[0][0] != '.' && board[0][0] == board[1][1] && board[1][1] == board[2][2] && board[2][2] == board[3][3]) {
+            winner = board[0][0];
+            for (int j = 0; j < n; j++) {
+                winnerCoords[j] = new Coord(j, j);
+            }
+        } else {
+            // checking secondary diagonal
+            if (board[0][3] != '.' && board[0][3] == board[1][2] && board[1][2] == board[2][1] && board[2][1] == board[3][0]) {
+                winner = board[0][2];
+                for (int j = 0; j < n; j++) {
                     winnerCoords[j] = new Coord(j, n - j - 1);
                 }
             }
@@ -163,7 +230,7 @@ public class GameController {
             gameOver = true;
 
             // make it visible on the ui
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < n; i++) {
                 Coord winnerCoord = winnerCoords[i];
                 fields[winnerCoord.getX()][winnerCoord.getY()].getButton().setBorder(new LineBorder(Color.RED, 5));
             }

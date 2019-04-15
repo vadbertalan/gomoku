@@ -13,10 +13,6 @@ public class GameFrame extends JFrame {
     Field[][] fields;
     GameController gameController;
 
-    public GameFrame() {
-        this(3);
-    }
-
     public GameFrame(int n) {
         setBounds(400, 100, 800, 800);
 
