@@ -5,6 +5,7 @@ lib/
 out/
 build/
 .gradle
+feladat_lap.png
 
 # Compiled class file
 *.class

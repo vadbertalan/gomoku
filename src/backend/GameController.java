@@ -5,6 +5,7 @@ package backend;
 import AI.Bot;
 import AI.Bot3;
 import AI.Bot4;
+import AI.Bot5;
 import frontend.GameFrame;
 import models.Field;
 import utils.ConsolePrinter;
@@ -19,11 +20,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 public class GameController {
-    private static final char[][] EMPTY_BOARD3 = {{'.', '.', '.'}, {'.', '.', '.'}, {'.', '.', '.'}};
-    private static final char[][] EMPTY_BOARD4 = {{'.', '.', '.', '.'}, {'.', '.', '.', '.'}, {'.', '.', '.', '.'}, {'.', '.', '.', '.'}};
-
     private JFrame gameFrame;
     private int n;
+    private int goal;
 
     private int unclickedFieldNumber;
     private char playerSign;
@@ -42,9 +41,14 @@ public class GameController {
 
     public GameController(int n) {
         this.gameFrame = new GameFrame(n);
-        this.n = n;
+        this.n = this.goal = n;
         gameInitialized = false;
         board = new char[n][n];
+    }
+    
+    public GameController(int n, int goal) {
+        this(n);
+        this.goal = goal;
     }
 
     public void initGame(char playerSign) {
@@ -65,8 +69,7 @@ public class GameController {
         switch (n) {
             case 3: opponent = new Bot3(opponentSign); break;
             case 4: opponent = new Bot4(opponentSign); break;
-//            case 5: opponent = new Bot4(opponentSign); break;
-            default: throw new IllegalArgumentException();
+            default: opponent = new Bot5(n, opponentSign); break;
         }
 
         for (int i = 0; i < n; i++) {
@@ -85,12 +88,7 @@ public class GameController {
     private void resetBoard(char[][] board) {
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
-                try {
-                    java.lang.reflect.Field emptyBoardField = GameController.class.getDeclaredField("EMPTY_BOARD" + n);
-                    board[i][j] = ((char[][]) emptyBoardField.get(this))[i][j];
-                } catch (NoSuchFieldException | IllegalAccessException e) {
-                    e.printStackTrace();
-                }
+                board[i][j] = '.';
             }
         }
     }
@@ -113,7 +111,7 @@ public class GameController {
             board[bestMove.getX()][bestMove.getY()] = opponentSign;
 
             JButton clickedButtonByOp = fields[bestMove.getX()][bestMove.getY()].getButton();
-            clickedButtonByOp.setIcon(new ImageIcon(ImageServer.getImage(opponentSign)));
+            clickedButtonByOp.setIcon(new ImageIcon(ImageServer.getImage(opponentSign).getScaledInstance(clickedButtonByOp.getWidth(), clickedButtonByOp.getHeight(), Image.SCALE_SMOOTH)));
             if (checkIfLastMoveWasLast()) return;
             clickedButtonByOp.removeMouseListener(clickedButtonByOp.getMouseListeners()[1]);
 
@@ -127,8 +125,9 @@ public class GameController {
 
         boolean ret = false; // ret will be modified anyway, or it won't, exception will stop the program
         try {
-            Method checkerMethod = null;
-            checkerMethod = GameController.class.getDeclaredMethod("checkForGameOver" + n);
+            String methodName = ((n == 3 && goal == 3) || (n == 4 && goal == 4)) ? "checkForGameOver" + n : "checkForGameOverLargeBoard";
+            Method checkerMethod;
+            checkerMethod = GameController.class.getDeclaredMethod(methodName);
             ret = (boolean) checkerMethod.invoke(this);
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
@@ -221,6 +220,184 @@ public class GameController {
         return processOutcome(winner, winnerCoords);
     }
 
+    private boolean checkForGameOverLargeBoard() {
+        char winner = 'N';
+        Coord[] winnerCoords = new Coord[goal];
+
+        // checking rows
+        for (int rowIndex = 0; rowIndex < n; rowIndex++) {
+            for (int startMask = 0; startMask < n - goal + 1; startMask++) {
+                boolean maskVictory = true;
+                char maskSign = board[rowIndex][startMask];
+                if (maskSign != '.') {
+                    for (int i = startMask; i < startMask + goal; i++) {
+                        if (board[rowIndex][i] != maskSign) {
+                            maskVictory = false;
+                            break;
+                        }
+                    }
+                    if (maskVictory) {
+                        winner = maskSign;
+
+                        int winnerCoordsIndex = 0;
+                        for (int i = startMask; i < startMask + goal; i++) {
+                            winnerCoords[winnerCoordsIndex++] = new Coord(rowIndex, i);
+                            }
+
+                        return processOutcome(winner, winnerCoords);
+                    }
+                }
+            }
+        }
+
+        // checking colums
+        for (int colIndex = 0; colIndex < n; colIndex++) {
+            for (int startMask = 0; startMask < n - goal + 1; startMask++) {
+                boolean maskVictory = true;
+                char maskSign = board[startMask][colIndex];
+                if (maskSign != '.') {
+                    for (int i = startMask; i < startMask + goal; i++) {
+                        if (board[i][colIndex] != maskSign) {
+                            maskVictory = false;
+                            break;
+                        }
+                    }
+                    if (maskVictory) {
+                        winner = maskSign;
+                        int winnerCoordsIndex = 0;
+                        for (int i = startMask; i < startMask + goal; i++) {
+                            winnerCoords[winnerCoordsIndex++] = new Coord(i, colIndex);
+                        }
+                        return processOutcome(winner, winnerCoords);
+                    }
+                }
+            }
+        }
+
+        // checking diagonals above the main diagonal (contains the main diagonal too)
+        for (int startDiagonalI = 0, startDiagonalJ = 0; startDiagonalJ < n - goal + 1; startDiagonalJ++) {
+            int startMaskI = startDiagonalI;
+            int startMaskJ = startDiagonalJ;
+
+            while (startMaskJ < n - goal + 1) {
+                boolean maskVictory = true;
+                char maskSign = board[startMaskI][startMaskJ];
+                if (maskSign != '.') {
+                    for (int i = startMaskI, j = startMaskJ; j < startMaskJ + goal; i++, j++) {
+                        if (board[i][j] != maskSign) {
+                            maskVictory = false;
+                            break;
+                        }
+                    }
+                    if (maskVictory) {
+                        winner = maskSign; // todo refactor winner to winnerSign
+
+                        int winnerCoordsIndex = 0;
+                        for (int i = startMaskI, j = startMaskJ; j < startMaskJ + goal; i++, j++) {
+                            winnerCoords[winnerCoordsIndex++] = new Coord(i, j);
+                        }
+                        return processOutcome(winner, winnerCoords);
+                    }
+                }
+                startMaskI++;
+                startMaskJ++;
+            }
+        }
+
+        // checking diagonals below the main diagonal
+        for (int startDiagonalI = 1, startDiagonalJ = 0; startDiagonalI < n - goal + 1; startDiagonalI++) {
+            int startMaskI = startDiagonalI;
+            int startMaskJ = startDiagonalJ;
+
+            while (startMaskI < n - goal + 1) {
+                boolean maskVictory = true; // todo remove this flag entirely!
+                char maskSign = board[startMaskI][startMaskJ];
+                if (maskSign != '.') {
+                    for (int i = startMaskI, j = startMaskJ; j < startMaskJ + goal; i++, j++) {
+                        if (board[i][j] != maskSign) {
+                            maskVictory = false;
+                            break;
+                        }
+                    }
+                    if (maskVictory) {
+                        winner = maskSign;
+
+                        int winnerCoordsIndex = 0;
+                        for (int i = startMaskI, j = startMaskJ; j < startMaskJ + goal; i++, j++) {
+                            winnerCoords[winnerCoordsIndex++] = new Coord(i, j);
+                        }
+                        return processOutcome(winner, winnerCoords);
+                    }
+                }
+                startMaskI++;
+                startMaskJ++;
+            }
+        }
+
+        // checking diagonals above the secondary diagonal (contains the secondary diagonal too)
+        for (int startDiagonalI = 0, startDiagonalJ = goal - 1; startDiagonalJ < n ; startDiagonalJ++) {
+            int startMaskI = startDiagonalI;
+            int startMaskJ = startDiagonalJ;
+
+            while (startMaskJ >= goal - 1) {
+                boolean maskVictory = true;
+                char maskSign = board[startMaskI][startMaskJ];
+                if (maskSign != '.') {
+                    for (int i = startMaskI, j = startMaskJ; j > startMaskJ - goal; i++, j--) {
+                        if (board[i][j] != maskSign) {
+                            maskVictory = false;
+                            break;
+                        }
+                    }
+                    if (maskVictory) {
+                        winner = maskSign;
+
+                        int winnerCoordsIndex = 0;
+                        for (int i = startMaskI, j = startMaskJ; j > startMaskJ - goal; i++, j--) {
+                            winnerCoords[winnerCoordsIndex++] = new Coord(i, j);
+                        }
+                        return processOutcome(winner, winnerCoords);
+                    }
+                }
+                startMaskI++;
+                startMaskJ--;
+            }
+        }
+
+        // checking diagonals below the secondary diagonal
+        for (int startDiagonalI = 1, startDiagonalJ = n - 1; startDiagonalI < n - goal + 1; startDiagonalI++) {
+            int startMaskI = startDiagonalI;
+            int startMaskJ = startDiagonalJ;
+
+            while (startMaskI <= n - goal) {
+                boolean maskVictory = true;
+                char maskSign = board[startMaskI][startMaskJ];
+                if (maskSign != '.') {
+                    for (int i = startMaskI, j = startMaskJ; j > startMaskJ - goal; i++, j--) {
+                        if (board[i][j] != maskSign) {
+                            maskVictory = false;
+                            break;
+                        }
+                    }
+                    if (maskVictory) {
+                        winner = maskSign;
+
+                        int winnerCoordsIndex = 0;
+                        for (int i = startMaskI, j = startMaskJ; j > startMaskJ - goal; i++, j--) {
+                            winnerCoords[winnerCoordsIndex++] = new Coord(i, j);
+                        }
+                        return processOutcome(winner, winnerCoords);
+                    }
+                }
+
+                startMaskI++;
+                startMaskJ--;
+            }
+        }
+
+        return processOutcome(winner, winnerCoords);
+    }
+
     private boolean processOutcome(char winner, Coord[] winnerCoords) {
         String outputMessage = "";
 
@@ -230,7 +407,7 @@ public class GameController {
             gameOver = true;
 
             // make it visible on the ui
-            for (int i = 0; i < n; i++) {
+            for (int i = 0; i < goal; i++) {
                 Coord winnerCoord = winnerCoords[i];
                 fields[winnerCoord.getX()][winnerCoord.getY()].getButton().setBorder(new LineBorder(Color.RED, 5));
             }
@@ -245,7 +422,6 @@ public class GameController {
 
         // gameOver flag might get changed in next code fragment so we return the current value safely
         boolean returnableGameOverFlag = gameOver;
-
         if (gameOver) {
             int input = JOptionPane.showConfirmDialog(null,
                     outputMessage + "\nOne more?",
@@ -267,10 +443,6 @@ public class GameController {
 
     public char getPlayerSign() {
         return playerSign;
-    }
-
-    public void setPlayerSign(char playerSign) {
-        this.playerSign = playerSign;
     }
 
     public char[][] getBoard() {

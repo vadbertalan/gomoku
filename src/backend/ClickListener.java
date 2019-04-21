@@ -5,10 +5,10 @@ package backend;
 import AI.Bot;
 import models.Field;
 import utils.ConsolePrinter;
-import utils.Coord;
 import utils.ImageServer;
 
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
@@ -41,7 +41,7 @@ public class ClickListener extends MouseAdapter {
         if (gameOver) return;
         board[field.getX()][field.getY()] = playerSign;
 
-        field.getButton().setIcon(new ImageIcon(ImageServer.getImage(playerSign)));
+        field.getButton().setIcon(new ImageIcon(ImageServer.getImage(playerSign).getScaledInstance(field.getButton().getWidth(), field.getButton().getHeight(), Image.SCALE_SMOOTH)));
         if (gameController.checkIfLastMoveWasLast()) return;
         field.getButton().removeMouseListener(this);
 

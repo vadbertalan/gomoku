@@ -4,12 +4,9 @@ package AI;
 
 import utils.Coord;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-
 public class Bot4 implements Bot {
     private static final int N = 4;
-    private static final int GAME_NOT_OVER = -5555;
+    private static final int GAME_NOT_OVER = -555555;
     private static final int NEG_INF = -10000;
     private static final int INF = 10000;
     private static final int MAX_DEPTH = 6;
@@ -24,7 +21,6 @@ public class Bot4 implements Bot {
 
     @Override
     public Coord findBestMove(char[][] board) {
-        System.out.println(evaluateBoard(board));
         Coord bestMove = new Coord(-100, -100);
         int bestScore = NEG_INF;
         for (int i = 0; i < N; i++) {
